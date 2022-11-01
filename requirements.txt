@@ -1,0 +1,13 @@
+click
+python_snippets
+numpy~=1.23.1
+pydantic
+transformers[onnx]~=4.21.1
+datasets~=2.4.0
+tokenizers~=0.12.1
+retrying
+torch --index-url=https://download.pytorch.org/whl/cu113
+setuptools~=60.2.0
+tqdm~=4.64.0
+PyYAML~=6.0
+onnx

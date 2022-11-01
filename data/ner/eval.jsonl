@@ -1,0 +1,2 @@
+{"text": "小白和小蓝出生在北京", "text_spans": [{"text": "小蓝", "span": [3,5], "label": {"name": "name"}}, {"text": "小白", "span": [0,2], "label": {"name": "name"}}, {"text": "北京", "span": [8,10], "label": {"name": "address"}}]}
+{"text": "今天是10月28号", "text_spans": [{"text": "10月28号","span": [3,9], "label": {"name": "time"}}]}

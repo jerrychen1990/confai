@@ -1,0 +1,2 @@
+{"text": "中国很大", "text_spans": [{"text": "中国", "span": [0,2], "label": {"name": "address"}}]}
+{"text": "据说小红在工厂", "text_spans": [{"text": "小红", "span": [2,4], "label": {"name": "name"}}, {"text": "工厂", "span": [5,7], "label": {"name": "address"}}]}
