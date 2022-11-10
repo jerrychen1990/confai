@@ -6,7 +6,7 @@
 @time: 2022/11/1 15:21
 """
 import unittest
-from confai.model.core import *
+from confai.models.core import *
 
 
 class TestUtils(unittest.TestCase):

@@ -8,14 +8,15 @@
 import os
 import logging
 from abc import abstractmethod
+from dataclasses import dataclass
 from typing import Dict, Callable
 
 import numpy as np
-from snippets import ensure_dir_path, get_batched_data, LogCostContext
+from snippets import ensure_dir_path, get_batched_data, LogCostContext, adapt_single
 from tqdm import tqdm
 
-from confai.model.core import PredictableModel, TrainableModel
-from confai.model.schema import *
+from confai.models.core import PredictableModel, TrainableModel, ModelConfig
+from confai.models.schema import *
 from confai.utils import ldict2dlist
 
 logger = logging.getLogger(__name__)
@@ -58,74 +59,55 @@ class AbstractDataManager:
         raise NotImplementedError
 
 
+class NNModelConfig(ModelConfig):
+    tokenizer_config: dict
+
+
 class NNModel(PredictableModel, TrainableModel):
     data_manager: type(AbstractDataManager) = None
-    model_cls = None
+    default_nn_model_type = None
     input_keys = None
     output_keys = None
 
-    def __init__(self, config):
+    def __init__(self, config: NNModelConfig):
         super().__init__(config)
         self.nn_model = None
         self.save_model_fn_dict = dict()
         self.load_model_fn_dict = dict()
         self.predict_fn_dict["model"] = self.predict_with_model
-        self.tokenizer = self.data_manager.get_tokenizer(**self.config["tokenizer_config"])
+        self.tokenizer = self.data_manager.get_tokenizer(**self.tokenizer_config)
 
-    def _load_config(self, config):
+    def _load_config(self, config: NNModelConfig):
         super()._load_config(config=config)
-        self.config["model_cls"] = self.model_cls
-        if self.config.get("input_keys") and not self.input_keys:
-            self.input_keys = self.config["input_keys"]
-        if self.config.get("output_keys") and not self.output_keys:
-            self.output_keys = self.config["output_keys"]
-        logger.debug(f"{self.input_keys=}")
-        logger.debug(f"{self.output_keys=}")
-        self.config["input_keys"] = self.input_keys
-        self.config["output_keys"] = self.output_keys
+        self.tokenizer_config = config.tokenizer_config
 
     @ensure_dir_path
-    def save(self, path, save_type="json", save_tokenizer=True, **kwargs):
-        super().save(path=path, save_type=save_type)
+    def save(self, path, save_tokenizer=True,
+             save_nn_model=True, nn_model_types: List = None):
+        super().save(path=path)
         if save_tokenizer:
             tokenizer_path = os.path.join(path, "tokenizer")
             self.save_tokenizer(path=tokenizer_path)
-
-    @ensure_dir_path
-    def save_tokenizer(self, path):
-        logger.info(f"saving tokenize to {path}")
-        self.data_manager.save_tokenizer(self.tokenizer, path)
-
-    @abstractmethod
-    def example2features(self, example: Example) -> Dict[str, any]:
-        raise not ImportError
-
-    def load_dataset(self, data_or_path: PathOrDictOrExample):
-        return self.data_manager.load_dataset(data_or_path=data_or_path, task=self.task,
-                                              map_fn=self.example2features)
-
-    @abstractmethod
-    def features2predict(self, features: Dict[str, Feature], pred_features: Dict[str, Feature]) -> Predict:
-        raise not ImportError
-
-    @ensure_dir_path
-    def save(self, path, save_type="json", save_tokenizer=True, save_nn_model=True, nn_model_types=["onnx"],
-             **kwargs):
-        super().save(path=path, save_type=save_type, save_tokenizer=save_tokenizer)
         if save_nn_model:
-            self.save_nn_model(path=path, nn_model_types=nn_model_types)
+            nn_model_path = os.path.join(path, "nn_model")
+            self.save_nn_model(path=nn_model_path, nn_model_types=nn_model_types)
 
+    @ensure_dir_path
     def save_nn_model(self, path, nn_model_types: List):
         if self.nn_model:
-            nn_model_path = os.path.join(path, "nn_model")
             for nn_model_type in nn_model_types:
                 if nn_model_type not in self.save_model_fn_dict:
                     logger.warning(f"saving nn_model_type:{nn_model_type} is not supported by {self.__class__}!")
                 else:
                     logger.info(f"saving nn_model with type:{nn_model_type}")
                     save_fn = self.save_model_fn_dict[nn_model_type]
-                    save_fn(path=nn_model_path)
+                    save_fn(path=path)
             logger.info("save nn model done")
+
+    @ensure_dir_path
+    def save_tokenizer(self, path):
+        logger.info(f"saving tokenize to {path}")
+        self.data_manager.save_tokenizer(self.tokenizer, path)
 
     @classmethod
     def load(cls, path: str = None, config: dict = None, load_nn_model=True):
@@ -149,51 +131,38 @@ class NNModel(PredictableModel, TrainableModel):
             self.nn_model = load_fn(path=path)
 
     @abstractmethod
+    def example2feature(self, example: Example, mode: str) -> Dict[str, Feature]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def feature2predict(self, features: Dict[str, Feature], pred_features: Dict[str, Feature]) -> PredictOrPredicts:
+        raise NotImplementedError
+
+    @abstractmethod
     def build_model(self, **kwargs):
-        raise NotImplementedError
-
-    def example2train_features(self, example: Example) -> Dict[str, Feature]:
-        assert example.get_ground_truth() is not None
-        features = self.example2features(example=example)
-        self._update_train_features(example=example, features=features)
-        return features
-
-    @abstractmethod
-    def _update_train_features(self, example, features: Dict[str, Feature]) -> Dict[str, Feature]:
-        raise NotImplementedError
-
-    def load_dataset(self, data_or_path, mode="train"):
-        assert mode in ["infer", "train"]
-        # logger.debug(f"{mode=}")
-        if mode == "infer":
-            return super().load_dataset(data_or_path=data_or_path)
-
-        return self.data_manager.load_dataset(data_or_path=data_or_path, task=self.task,
-                                              map_fn=self.example2train_features)
-
-    @classmethod
-    def _get_onnx_model_path(cls, path):
-        return os.path.join(path, "model.onnx")
-
-    @abstractmethod
-    def predict_with_model(self, features: Dict[str, np.ndarray], **kwargs) -> Dict[str, Feature]:
         raise NotImplementedError
 
     def add_predict_fn(self, mode: str, predict_fn: Callable):
         self.predict_fn_dict[mode] = predict_fn
 
-    def do_predict(self, examples: List[Example], mode="model", batch_size=32, **kwargs) -> List[Predict]:
+    @abstractmethod
+    def predict_with_model(self, features: Dict[str, np.ndarray], **kwargs) -> Dict[str, Feature]:
+        raise NotImplementedError
+
+    @adapt_single(ele_name="examples")
+    def do_predict(self, examples: ExampleOrExamples, mode="model", batch_size=32, **kwargs) -> PredictOrPredicts:
+        # logger.info(examples)
         if mode not in self.predict_fn_dict:
             raise ValueError(f"invalid predict mode:{mode}!")
         predict_fn = self.predict_fn_dict[mode]
-        features = (self.example2features(e) for e in examples)
+        features = (self.example2feature(e, mode="test") for e in examples)
         dataset = get_batched_data(features, batch_size)
         # dataset = self.load_dataset(data_or_path=examples)
         preds = []
         with LogCostContext(name="predict batches"):
             for features in tqdm(dataset):
-                logger.debug(f"{features=}")
-                to_pred_features = [{k: f[k] for k in self.config["input_keys"]} for f in features]
+                # logger.info(f"{features=}")
+                to_pred_features = [{k: f[k] for k in self.input_keys} for f in features]
                 to_pred_features = self.data_manager.collate(features=to_pred_features, tokenizer=self.tokenizer,
                                                              padding=True, return_tensors="np")
                 # logger.debug(f"{to_pred_features=}")
@@ -201,6 +170,12 @@ class NNModel(PredictableModel, TrainableModel):
                 pred_features = ldict2dlist(pred_features)
                 # logger.debug(f"{pred_features=}")
                 assert len(features) == len(pred_features)
-                batch_preds = [self.features2predict(f, pf) for f, pf in zip(features, pred_features)]
+                batch_preds = [self.feature2predict(f, pf) for f, pf in zip(features, pred_features)]
                 preds.extend(batch_preds)
         return preds
+
+    def train(self, train_data: PathOrDictOrExample,
+              eval_data: PathOrDictOrExample = None,
+              train_kwargs=dict(),
+              callback_kwargs=dict()):
+        raise NotImplementedError

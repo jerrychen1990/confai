@@ -76,6 +76,14 @@ class TextSpan(Predict):
 TextSpans = List[TextSpan]
 
 
+class GenText(Predict):
+    text: str = Field(description="生成的内容")
+    score: float = Field(description="标签概率", le=1., ge=0, default=1.)
+
+
+GenTexts = List[GenText]
+
+
 # 文本分类模型输入
 class TextClassifyExample(TextExample):
     label: Optional[LabelOrLabels] = Field(description="Ground Truth, 训练数据有此字段。根据label是不是list类型区分单标签任务和多标签任务")
@@ -84,6 +92,7 @@ class TextClassifyExample(TextExample):
         return self.label
 
 
+# 文本对模型输入
 class TextPairClassifyExample(TextPairExample):
     label: Optional[LabelOrLabels] = Field(description="Ground Truth, 训练数据有此字段。训练数据有此字段。根据label是不是list类型区分单标签任务和多标签任务")
 
@@ -105,6 +114,14 @@ class TextSpanClassifyExample(TextExample):
             if values["text"][s:e] != text_span.text:
                 raise ValueError(f"span:{text_span.span} not match the text:{text_span.text}")
         return v
+
+
+# text2text 模型输入
+class TextGenExample(TextExample):
+    gen: Optional[GenText] = Field(description="Ground Truth, 训练数据有此字段。")
+
+    def get_ground_truth(self):
+        return self.gen
 
 
 """
@@ -175,6 +192,14 @@ MOCK_TEXT_SPELL_CORRECTION_PREDICT = [
     }
 ]
 
+MOCK_TEXT_GEN_EXAMPLE = {
+    "text": "白日依山尽"
+}
+
+MOCK_TEXT_GEN_PREDICT = {
+    "text": "黄河入海流",
+}
+
 
 def build_union_instance(union_cls, data):
     for cls in union_cls.__args__:
@@ -202,11 +227,6 @@ def to_dict(element: Union[BaseModel, List[BaseModel]], **kwargs) -> DictOrDicts
     return element.dict(**kwargs)
 
 
-@adapt_batch(ele_name="element")
-def from_dict(element: DictOrDicts, tgt_cls:type[Example, Union]) -> Union[BaseModel, List[BaseModel]]:
-    return build_union_instance(union_cls, element)
-
-
 # 任务定义
 class Task(Enum):
     # 文本分类
@@ -216,6 +236,8 @@ class Task(Enum):
     TEXT_PAIR_CLS = (TextPairClassifyExample, LabelOrLabels, MOCK_TEXT_PAIR_EXAMPLE, MOCK_TEXT_PAIR_PREDICT)
     # 文本span抽取
     TEXT_SPAN_CLS = (TextSpanClassifyExample, TextSpans, MOCK_TEXT_SPAN_EXAMPLE, MOCK_TEXT_SPAN_PREDICT)
+    # 文本生成
+    TEXT_GEN = (TextGenExample, GenText, MOCK_TEXT_GEN_EXAMPLE, MOCK_TEXT_GEN_PREDICT)
 
     def __init__(self, input_cls, output_cls, mock_input, mock_output):
         self.input_cls = input_cls
