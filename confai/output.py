@@ -87,3 +87,9 @@ def get_output_func(task: Task):
         raise ValueError(f"no output function found for task:{task}, valid tasks:"
                          f"{[e.name for e in _task2output_func.keys()]}")
     return _task2output_func[task]
+
+
+def get_output_on_task(examples: List[Example], preds: List[PredictOrPredicts], task: Task) -> Dict:
+    output_func = get_output_func(task)
+    output = output_func(examples, preds)
+    return output

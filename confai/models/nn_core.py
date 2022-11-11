@@ -90,7 +90,8 @@ class NNModel(PredictableModel, TrainableModel):
             self.save_tokenizer(path=tokenizer_path)
         if save_nn_model:
             nn_model_path = os.path.join(path, "nn_model")
-            self.save_nn_model(path=nn_model_path, nn_model_types=nn_model_types)
+            self.save_nn_model(path=nn_model_path, nn_model_types=[
+                self.default_nn_model_type] if nn_model_types is None else nn_model_types)
 
     @ensure_dir_path
     def save_nn_model(self, path, nn_model_types: List):

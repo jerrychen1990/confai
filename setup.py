@@ -70,7 +70,8 @@ INSTALL_REQUIRES = [
     "click",
     "torch",
     "accelerate",
-    "onnx"
+    "onnx",
+    "jsonpath_ng"
 ]
 DEPENDENCY_LINKS = [
     "https://download.pytorch.org/whl/cu113"

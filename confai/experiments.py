@@ -23,7 +23,7 @@ from confai.evaluate import *
 from confai.models import get_model_cls
 from confai.models.nn_core import NNModel, NNModelConfig
 from confai.models.schema import *
-from confai.output import get_output_func
+from confai.output import get_output_func, get_output_on_task
 from confai.utils import print_info, jdumps, get_current_time_str, jdump, random_split_list, read_config
 
 logger = logging.getLogger(__name__)
@@ -235,6 +235,12 @@ class Experiment(metaclass=ABCMeta):
             self.model.build_model(**self.config.nn_model_config)
         star_print("model initialize phase end")
 
+    def _update_callback_kwargs(self):
+        for k, v in self.config.callback_config.items():
+            if k == "eval_save":
+                v.update(model=self.model, eval_data=self.eval_data_path, test_config=self.config.test_config,
+                         experiment_path=self.experiment_path)
+
     # 训练模型
     def train_model(self):
         star_print("training phase start")
@@ -243,8 +249,8 @@ class Experiment(metaclass=ABCMeta):
         # set output_dir for huggingface trainer
         if "output_dir" not in self.config.train_config:
             self.config.train_config["output_dir"] = os.path.join(self.log_path, f"hf_output/")
-
         logger.info(f"training with {self.config.train_config=}")
+        self._update_callback_kwargs()
         self.model.train(train_data=self.train_data_path,
                          eval_data=self.eval_data_path,
                          callback_kwargs=self.config.callback_config,
@@ -257,43 +263,48 @@ class Experiment(metaclass=ABCMeta):
         self.model.save(path=self.model_path, **self.common_config.save_args)
         star_print("saving phase end")
 
+    def test_on_data_path(self, data_path: str, output_path: str = None, eval_path: str = None):
+
+        preds = self.model.predict(data=data_path, **self.config.test_config)
+        examples: List[Example] = list(self.model.read_examples(data_path))
+        output_rs, eval_rs = None, None
+        if output_path:
+            output_rs = get_output_on_task(examples, preds, self.task)
+            logger.info(f"output pred :{len(output_rs)} result to {output_path}")
+            jdump(output_rs, output_path)
+        if eval_path:
+            try:
+                if examples[0].get_ground_truth() is None:
+                    logger.warning(f"can't eval on data without ground truth!")
+                else:
+                    eval_rs = eval_on_task(examples, preds, self.config.task_config)
+                    logger.info(jdumps(eval_rs))
+                    logger.info("writing eval result to :{}".format(eval_path))
+                    jdump(eval_rs, eval_path)
+            except ValueError as e:
+                logger.warning(e)
+        return output_rs, eval_rs
+
     # 测试模型
     def test_model(self):
         star_print("testing phase start")
         for tag, data_path in zip(['train', 'eval', 'test'],
                                   [self.train_data_path, self.eval_data_path, self.test_data_path]):
-            # todo 处理多个test文件的情况， 暂时不处理
-            if isinstance(data_path, list):
-                data_path = data_path[0]
-
             # 不需要eval也不需要output的情况
             if tag not in self.common_config.eval_phase_list and tag not in self.common_config.output_phase_list:
                 continue
             if not data_path or not os.path.exists(data_path):
                 logger.info(f"data_path {data_path} not exists, will not predict")
                 continue
-
+            # todo 处理多个test文件的情况， 暂时不处理
+            if isinstance(data_path, list):
+                data_path = data_path[0]
             logger.info("predict result on {} data:".format(tag))
-            preds = self.model.predict(data=data_path, **self.config.test_config)
-            examples: List[Example] = list(self.model.read_examples(data_path))
-            if tag in self.common_config.output_phase_list:
-                output_data = self.get_output(examples, preds)
-                path = os.path.join(self.output_path, f"{tag}.json")
-                logger.info(f"output pred :{len(output_data)} result to {path}")
-                jdump(output_data, path)
-            if tag in self.common_config.output_phase_list:
-                try:
-                    logger.info("evaluating on {} data".format(tag))
-                    if examples[0].get_ground_truth() is None:
-                        logger.warning(f"can't eval on data without ground truth!")
-                        continue
-                    eval_rs = self.evaluate(examples, preds)
-                    logger.info(jdumps(eval_rs))
-                    path = os.path.join(self.eval_path, f"{tag}.json")
-                    logger.info("writing eval result to :{}".format(path))
-                    jdump(eval_rs, path)
-                except ValueError as e:
-                    logger.warning(e)
+            output_path = os.path.join(self.log_path, f"{tag}_output.json") \
+                if tag in self.common_config.output_phase_list else None
+            eval_path = os.path.join(self.log_path, f"{tag}_eval.json") \
+                if tag in self.common_config.eval_phase_list else None
+            self.test_on_data_path(data_path, output_path, eval_path)
         star_print("testing phase end")
 
     # 记录实验运行时的config
@@ -301,22 +312,6 @@ class Experiment(metaclass=ABCMeta):
         config_file_path = os.path.join(self.experiment_path, "config.json")
         star_print(f"saving config file to {config_file_path}")
         jdump(self.config, config_file_path)
-
-    # 评测模型效果
-    def evaluate(self, examples: List[Example], preds: List[PredictOrPredicts]) -> Dict:
-        eval_func = get_eval_func(self.task)
-        if examples[0].get_ground_truth() is None:
-            raise ValueError("example do not contain ground truth, can not evaluate!")
-
-        ground_truth = [e.get_ground_truth() for e in examples]
-        eval_rs = eval_func(ground_truth, preds)
-        return eval_rs
-
-    # 输出模型预测结果
-    def get_output(self, examples: List[Example], preds: List[PredictOrPredicts]) -> Dict:
-        output_func = get_output_func(self.task)
-        output = output_func(examples, preds)
-        return output
 
     # 运行实验，实验的入口
     def run(self):

@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click.option("--config_path", "-f", help="配置文件路径")
 def run_experiment(config_path):
+    """run confai experiment from config file"""
     experiment = build_experiment(config_path=config_path)
     try:
         experiment.run()

@@ -12,7 +12,7 @@ from collections import OrderedDict, defaultdict
 from typing import List, Dict, Set, Sequence, Any
 
 # 计算f1
-from confai.models.schema import LabelOrLabels, Label, TextSpans, TextSpan, Task, GenText
+from confai.models.schema import LabelOrLabels, Label, TextSpans, TextSpan, Task, GenText, Example
 
 
 def get_f1(precision, recall):
@@ -160,3 +160,9 @@ def get_eval_func(task: Task):
         raise ValueError(f"no eval function found for task:{task}, valid tasks:"
                          f"{[e.name for e in _task2eval_func.keys()]}")
     return _task2eval_func[task]
+
+
+def eval_on_task(examples: List[Example], preds: List[LabelOrLabels], task: Task) -> dict:
+    eval_func = get_eval_func(task)
+    true_labels = [e.get_ground_truth() for e in examples]
+    return eval_func(true_labels, preds)

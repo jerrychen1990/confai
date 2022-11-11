@@ -12,3 +12,4 @@ tqdm~=4.64.0
 PyYAML~=6.0
 datasets~=2.4.0
 sentencepiece
+jsonpath_ng
