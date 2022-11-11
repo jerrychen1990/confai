@@ -15,9 +15,9 @@ loggers:
 handlers:
   console:
     class: logging.StreamHandler
-    level: DEBUG
+    level: INFO
     formatter: detail
-    stream: ext://sys.stdout
+    stream: ext://sys.stderr
 
   debug_file_handler:
     class: logging.handlers.RotatingFileHandler
@@ -39,7 +39,7 @@ handlers:
 
   error_file_handler:
     class: logging.handlers.RotatingFileHandler
-    level: ERROR
+    level: WARNING
     formatter: detail
     filename: ${CONFAI_PATH}/logs/error.log
     maxBytes: 10485760 # 10MB

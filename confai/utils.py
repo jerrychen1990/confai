@@ -6,16 +6,13 @@
 @time: 2022/11/1 15:31
 """
 import copy
+import random
 import re
-from random import random
-
-import numpy as np
-import yaml
-
 from configparser import ConfigParser
 from dataclasses import fields
 from typing import Union
 
+import yaml
 from snippets.decorators import *
 from snippets.utils import *
 
@@ -87,8 +84,8 @@ def deep_update(d: dict, u: dict):
 
 
 # 随机拆分list
-# pct_or_num如果是0-1的浮点数, 按照pct_or_num:1-pct_or_num拆分
-# pct_or_num如果是整数, 按照pct_or_num:len(l)-pct_or_num 拆分
+# pct_or_num如果是0-1的浮点数, 按照1-pct_or_num:pct_or_num拆分
+# pct_or_num如果是整数, 按照len(l)-pct_or_num:pct_or_num 拆分
 def random_split_list(l: List, pct_or_num: Union[float, int]):
     tmp = copy.copy(l)
     random.shuffle(tmp)
@@ -97,7 +94,7 @@ def random_split_list(l: List, pct_or_num: Union[float, int]):
     else:
         sample_num = int(pct_or_num)
 
-    return tmp[:sample_num], tmp[sample_num:]
+    return tmp[sample_num:], tmp[:sample_num]
 
 
 def jload_multi_files(files):

@@ -21,6 +21,7 @@ from transformers.models.bert import BertOnnxConfig
 from transformers.utils import PaddingStrategy
 from datasets import Dataset, DatasetDict
 
+from confai.models.callbacks import EvalSaveCallback, get_callbacks
 from confai.models.nn_core import NNModel, Feature, AbstractDataManager
 from confai.models.schema import *
 from confai.utils import safe_call, safe_build_data_cls, dlist2ldict
@@ -37,11 +38,6 @@ _onnx_config_map = {
     BertConfig: BertOnnxConfig
 }
 
-_callback_map = {
-    "early_stop": EarlyStoppingCallback
-
-}
-
 _task_map = {
     Task.TEXT_CLS: "sequence-classification",
     Task.TEXT_SPAN_CLS: "token-classification",
@@ -56,30 +52,6 @@ def get_train_args(**kwargs):
         TrainingArguments, kwargs
     )
     return training_args
-
-
-def get_callbacks(train_args: TrainingArguments, **kwargs):
-    callbacks = []
-    for callback, callback_kwargs in kwargs.items():
-        if callback not in _callback_map:
-            logger.warning(f"callback:{callback} not found!")
-        else:
-            callback = _callback_map[callback](**callback_kwargs)
-            logger.info(f"adding callback :{callback.__class__.__name__} with kwargs:{kwargs}")
-            callbacks.append(callback)
-            if isinstance(callback, EarlyStoppingCallback):
-                logger.info("set load_best_model_at_end to True for EarlyStoppingCallback")
-                train_args.load_best_model_at_end = True
-
-                metric_for_best_model = kwargs.get("metric_for_best_model", "loss")
-                logger.info(f"set metric_for_best_model to {metric_for_best_model} for EarlyStoppingCallback")
-                train_args.metric_for_best_model = metric_for_best_model
-
-                evaluation_strategy = kwargs.get("evaluation_strategy", "steps")
-                logger.info(f"set evaluation_strategy to {evaluation_strategy} for EarlyStoppingCallback")
-                train_args.eval_steps = train_args.logging_steps
-                train_args.evaluation_strategy = evaluation_strategy
-    return callbacks
 
 
 class HFDataManager(AbstractDataManager):
@@ -218,14 +190,14 @@ class HFTorchModel(NNModel, ABC):
             if eval_data:
                 eval_dataset = self.load_dataset(eval_data, mode="train")
                 datasets["eval_dataset"] = eval_dataset
-            # logger.info(f"datasets:{datasets}")
+            logger.info(f"datasets:{datasets}")
             # logger.info(train_dataset[0])
 
         with LogCostContext(name="model train"):
             logger.info("building train args")
             train_args = get_train_args(**train_kwargs)
             logger.info("building callbacks")
-            callbacks = get_callbacks(train_args=train_args, **callback_kwargs)
+            callbacks = get_callbacks(train_args=train_args, callback_config=callback_kwargs)
             logger.debug(f"train args:{train_args}")
             logger.debug(f"{callbacks=}")
             logger.info("do training")

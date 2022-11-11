@@ -9,7 +9,7 @@
 import logging
 
 import click
-from snippets import jload, dump_lines
+from snippets import dump_lines, load_lines
 
 from confai.utils import random_split_list
 
@@ -19,12 +19,14 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click.option("--src_path", "-s", help="原始文件路径")
 @click.option("--dst_path", "-d", help="目标文件路径")
-@click.option("--split_pct", "-p", help="拆分比例")
-@click.option("--split_num", "-n", help="拆分数量")
+@click.option("--split_pct", "-p", type=float, help="拆分比例")
+@click.option("--split_num", "-n", type=int, help="拆分数量")
 @click.option("--remain_path", "-r", help="保留文件路径")
 def split_file(src_path, dst_path, split_pct=None, split_num=None, remain_path=None):
     """split file into two files with pct or exact num"""
-    lines = jload(src_path)
+    print(src_path, dst_path, split_pct, remain_path)
+
+    lines = load_lines(src_path)
     pct_or_num = split_num if split_num else split_pct
     remain, dst = random_split_list(lines, pct_or_num=pct_or_num)
     logger.info(f"split into {len(remain)} remains and {len(dst)} dst")

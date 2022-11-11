@@ -9,7 +9,6 @@ import copy
 import logging
 import os
 from abc import abstractmethod
-from dataclasses import dataclass
 from typing import Iterable
 
 from snippets import jdumps, jdump, jload, ensure_dir_path, jload_lines
@@ -24,6 +23,7 @@ class ModelConfig(BaseModel):
     model_name: str
     model_cls: str
     task_config: dict
+    tokenizer_config: dict
 
 
 class ConfAIBaseModel(ABC, object):
@@ -78,6 +78,7 @@ class ConfAIBaseModel(ABC, object):
             if path:
                 logger.info(f"loading model from path:{path}")
                 config = jload(cls.get_config_path(path))
+                config = ModelConfig(**config)
             else:
                 raise ValueError("neither path or config is given!")
         model = cls(config=config)

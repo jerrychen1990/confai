@@ -19,3 +19,13 @@ class TestUtils(unittest.TestCase):
         path = os.path.join(cur_path, "../conf/examples/base.ini")
         config = read_config(path)
         logger.info(jdumps(config))
+
+    def test_random_split(self):
+        l = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        l1, l2 = random_split_list(l, 0.1)
+        self.assertEqual(1, len(l2))
+        self.assertEqual(9, len(l1))
+
+        l1, l2 = random_split_list(l, 6)
+        self.assertEqual(6, len(l2))
+        self.assertEqual(4, len(l1))
