@@ -14,7 +14,6 @@ import logging
 import os
 import random
 from abc import ABCMeta
-# from dataclasses import Field
 from typing import Type
 
 from snippets import jload_lines, jdump_lines
@@ -23,7 +22,7 @@ from confai.evaluate import *
 from confai.models import get_model_cls
 from confai.models.nn_core import NNModel, NNModelConfig
 from confai.models.schema import *
-from confai.output import get_output_func, get_output_on_task
+from confai.output import get_output_on_task
 from confai.utils import print_info, jdumps, get_current_time_str, jdump, random_split_list, read_config
 
 logger = logging.getLogger(__name__)
@@ -277,7 +276,7 @@ class Experiment(metaclass=ABCMeta):
                 if examples[0].get_ground_truth() is None:
                     logger.warning(f"can't eval on data without ground truth!")
                 else:
-                    eval_rs = eval_on_task(examples, preds, self.config.task_config)
+                    eval_rs = eval_on_task(examples, preds, self.task)
                     logger.info(jdumps(eval_rs))
                     logger.info("writing eval result to :{}".format(eval_path))
                     jdump(eval_rs, eval_path)
@@ -300,9 +299,9 @@ class Experiment(metaclass=ABCMeta):
             if isinstance(data_path, list):
                 data_path = data_path[0]
             logger.info("predict result on {} data:".format(tag))
-            output_path = os.path.join(self.log_path, f"{tag}_output.json") \
+            output_path = os.path.join(self.output_path, f"{tag}.json") \
                 if tag in self.common_config.output_phase_list else None
-            eval_path = os.path.join(self.log_path, f"{tag}_eval.json") \
+            eval_path = os.path.join(self.eval_path, f"{tag}.json") \
                 if tag in self.common_config.eval_phase_list else None
             self.test_on_data_path(data_path, output_path, eval_path)
         star_print("testing phase end")
