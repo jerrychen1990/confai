@@ -10,7 +10,7 @@ import os
 from typing import List
 
 from jsonpath_ng import parse
-from snippets import jdump
+from snippets import jdump, jdump_lines
 from transformers import TrainerCallback, TrainingArguments, TrainerState, TrainerControl, EarlyStoppingCallback
 
 from confai.evaluate import eval_on_task
@@ -35,6 +35,8 @@ class EvalSaveCallback(TrainerCallback):
         self.best_metric = None
         self.tgt_metric = tgt_metric
         self.best_model_path = os.path.join(self.experiment_path, "callbacks", "best_model")
+        self.statistic_path = os.path.join(self.experiment_path, "callbacks", "eval_save.jsonl")
+        self.statistic = list()
         self.load_best_model_at_end = load_best_model_at_end
         self.arrive_tgt = False
         self.origin_patience = patience
@@ -62,7 +64,7 @@ class EvalSaveCallback(TrainerCallback):
             return True
         return False
 
-    def do_save(self, eval_rs, tag):
+    def do_save(self, eval_rs, tag, statistic):
         jsonpath_expression = parse(self.metric_jpath)
         match = jsonpath_expression.find(eval_rs)
         if not match:
@@ -70,6 +72,7 @@ class EvalSaveCallback(TrainerCallback):
         metric = match[0].value
         best_metric_str = f"{self.best_metric:2.3f}" if self.best_metric is not None else "None"
 
+        statistic.update(metric=f"{metric:2.3f}", best_metric=best_metric_str)
         logger.info(f"get metric:{metric:2.3f} of {tag}, best_metric:{best_metric_str}")
 
         if self._is_better(metric, self.best_metric):
@@ -94,20 +97,31 @@ class EvalSaveCallback(TrainerCallback):
         several inputs.
         """
         tag = f"step-{state.global_step}"
+        if not self.eval_epochs and not self.eval_steps:
+            self.eval_steps = args.logging_steps
+
+        statistic = dict(epoch=state.epoch, step=state.global_step)
+
         if self.eval_steps and state.global_step % self.eval_steps == 0:
             logger.info(f"eval model on the end of {tag}")
             eval_rs = self.do_eval(tag)
             if self.metric_jpath:
-                self.do_save(eval_rs, tag)
+                self.do_save(eval_rs, tag, statistic)
+                self.statistic.append(statistic)
+
                 control.should_training_stop = self.arrive_tgt or self.patience == 0
 
     def on_epoch_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
         tag = f"epoch-{state.epoch}"
+        statistic = dict(epoch=state.epoch, step=state.global_step)
+
         if self.eval_epochs and state.epoch % self.eval_epochs == 0:
             logger.info(f"eval model on the end of {tag}")
             eval_rs = self.do_eval(tag)
             if self.metric_jpath:
-                self.do_save(eval_rs, tag)
+                self.do_save(eval_rs, tag, statistic)
+                self.statistic.append(statistic)
+
                 control.should_training_stop = self.arrive_tgt or self.patience == 0
 
     def on_train_end(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
@@ -115,14 +129,17 @@ class EvalSaveCallback(TrainerCallback):
         Event called at the end of training.
         """
         logger.info("training is end")
+        statistic = dict(epoch=state.epoch, step=state.global_step)
+
         if not self.arrive_tgt and self.patience > 0:
             tag = f"train_end"
             logger.info(f"eval model on the end of training")
             eval_rs = self.do_eval(tag)
             if self.metric_jpath:
-                self.do_save(eval_rs, tag)
-
-        logger.info(state)
+                self.do_save(eval_rs, tag, statistic)
+                self.statistic.append(statistic)
+        logger.info("save statistics")
+        jdump_lines(self.statistic, self.statistic_path)
 
         if self.load_best_model_at_end:
             logger.info(f"load best model from {self.best_model_path}")
@@ -139,7 +156,7 @@ _callback_map = {
 
 
 def _update_callback(train_args: TrainingArguments, callback: TrainerCallback, kwargs):
-    if isinstance(callback, EarlyStoppingCallback):
+    if issubclass(callback, EarlyStoppingCallback):
         logger.info("set load_best_model_at_end to True for EarlyStoppingCallback")
         train_args.load_best_model_at_end = True
 
@@ -151,6 +168,9 @@ def _update_callback(train_args: TrainingArguments, callback: TrainerCallback, k
         logger.info(f"set evaluation_strategy to {evaluation_strategy} for EarlyStoppingCallback")
         train_args.eval_steps = train_args.logging_steps
         train_args.evaluation_strategy = evaluation_strategy
+    if issubclass(callback, EvalSaveCallback):
+        if not kwargs.get("eval_steps") and not kwargs.get("eval_epochs"):
+            kwargs["eval_steps"] = train_args.logging_steps
 
 
 def get_callbacks(train_args: TrainingArguments, callback_config: dict):
@@ -159,9 +179,10 @@ def get_callbacks(train_args: TrainingArguments, callback_config: dict):
         if callback_name not in _callback_map:
             logger.warning(f"callback:{callback_name} not found!")
         else:
-            callback = _callback_map[callback_name](**kwargs)
-            logger.info(f"adding callback :{callback.__class__.__name__} with kwargs:{kwargs}")
-            _update_callback(train_args, callback, kwargs)
+            callback_cls = _callback_map[callback_name]
+            _update_callback(train_args, callback_cls, kwargs)
+            logger.info(f"adding callback :{callback_cls.__name__} with kwargs:{kwargs}")
+            callback = callback_cls(**kwargs)
             callbacks.append(callback)
 
     return callbacks

@@ -22,7 +22,7 @@ def exec_cmd(cmd):
 
 
 @click.command()
-@click.option("--upload/--no-eval", default=False, help="是否要上传到pypi.meetwhale.com")
+@click.option("--upload/--no-upload", default=False, help="是否要上传到pypi.meetwhale.com")
 def build_package(upload):
     print("removing files...")
     exec_cmd("rm -rf dist build *.egg-info")

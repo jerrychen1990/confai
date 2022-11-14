@@ -48,6 +48,16 @@ def get_train_args(**kwargs):
     for s, t in _train_arg_map.items():
         if s in kwargs and t not in kwargs:
             kwargs[t] = kwargs[s]
+    logging_pct = kwargs.get("logging_pct")
+    if logging_pct:
+        if "max_steps" in kwargs:
+            max_steps = kwargs["max_steps"]
+        else:
+            max_steps = kwargs["num_train_epochs"] * kwargs["train_num"] // kwargs["per_device_train_batch_size"]
+        logging_steps = int(max_steps * logging_pct)
+        kwargs["logging_steps"] = logging_steps
+    logger.info(f"train kwargs:{kwargs}")
+
     training_args = safe_build_data_cls(
         TrainingArguments, kwargs
     )
@@ -192,6 +202,7 @@ class HFTorchModel(NNModel, ABC):
                 datasets["eval_dataset"] = eval_dataset
             logger.info(f"datasets:{datasets}")
             # logger.info(train_dataset[0])
+            train_kwargs.update(train_num=len(train_dataset), eval_num=len(eval_dataset))
 
         with LogCostContext(name="model train"):
             logger.info("building train args")
