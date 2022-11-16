@@ -15,7 +15,7 @@ loggers:
 handlers:
   console:
     class: logging.StreamHandler
-    level: INFO
+    level: DEBUG
     formatter: detail
     stream: ext://sys.stderr
 

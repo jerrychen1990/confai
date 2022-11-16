@@ -5,15 +5,15 @@
 @file: nn_core.py
 @time: 2022/11/1 15:50
 """
-import os
 import logging
+import os
 from abc import abstractmethod
-from dataclasses import dataclass
 from typing import Dict, Callable
 
 import numpy as np
 from snippets import ensure_dir_path, get_batched_data, LogCostContext, adapt_single
 from tqdm import tqdm
+from transformers import PreTrainedTokenizerBase
 
 from confai.models.core import PredictableModel, TrainableModel, ModelConfig
 from confai.models.schema import *
@@ -29,7 +29,7 @@ class AbstractDataManager:
 
     @classmethod
     @abstractmethod
-    def get_tokenizer(cls, tokenizer_path: str):
+    def get_tokenizer(cls, tokenizer_path: str) -> PreTrainedTokenizerBase:
         raise NotImplementedError
 
     @classmethod
@@ -75,7 +75,7 @@ class NNModel(PredictableModel, TrainableModel):
         self.save_model_fn_dict = dict()
         self.load_model_fn_dict = dict()
         self.predict_fn_dict["model"] = self.predict_with_model
-        self.tokenizer = self.data_manager.get_tokenizer(**self.tokenizer_config)
+        self.tokenizer: PreTrainedTokenizerBase = self.data_manager.get_tokenizer(**self.tokenizer_config)
 
     def _load_config(self, config: NNModelConfig):
         super()._load_config(config=config)

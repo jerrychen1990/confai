@@ -6,3 +6,4 @@
 @time: 2022/11/3 11:18
 """
 from confai.models.text_cls.cls_token_cls import CLSTokenClsModel
+from confai.models.text_cls.mlm_cls import MLMCLSModel

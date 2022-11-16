@@ -98,7 +98,7 @@ class HFDataManager(AbstractDataManager):
         return batch
 
     @classmethod
-    def load_dataset(cls, data_or_path: PathOrDictOrExample, task: Task, map_fn: Callable):
+    def load_dataset(cls, data_or_path: PathOrDictOrExample, task: Task, map_fn: Callable, use_cache=False):
         # read from file or files
         if isinstance(data_or_path, str) or (isinstance(data_or_path, List) and isinstance(data_or_path[0], str)):
             dataset = Dataset.from_json(data_or_path)
@@ -122,7 +122,7 @@ class HFDataManager(AbstractDataManager):
             features = map_fn(example)
             return features
 
-        return dataset.map(transfer2features)
+        return dataset.map(transfer2features, load_from_cache_file=use_cache)
 
 
 class HFTorchModel(NNModel, ABC):

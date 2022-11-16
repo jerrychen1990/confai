@@ -26,9 +26,6 @@ class BaseTextClassifyModel(ConfAIBaseModel, ABC):
         self.multi_label = self.task_config["multi_label"]
         self.max_len = self.task_config["max_len"]
         self.labels = load_lines(self.task_config['label_path'])
-        self.label2id, self.id2label = seq2dict(self.labels)
-        self.label_num = len(self.label2id)
-        self.ignore_labels = self.task_config.get("ignore_labels", [])
 
     @ensure_dir_path
     def save_assets(self, path):
