@@ -11,6 +11,7 @@ from typing import Dict
 import numpy as np
 import torch
 from numpy import ndarray
+from snippets import load_lines, seq2dict
 from transformers import AutoModelForSequenceClassification
 
 from confai.models.torch_core import HFTorchModel, Feature
@@ -25,8 +26,10 @@ class CLSTokenClsModel(BaseTextClassifyModel, HFTorchModel):
     output_keys = ["logits"]
 
     def __init__(self, config):
-        super().__init__(config=config)
-        self.max_len = self.task_config["max_len"]
+        super(CLSTokenClsModel, self).__init__(config=config)
+        self.label2id, self.id2label = seq2dict(self.labels)
+        self.label_num = len(self.label2id)
+        self.ignore_labels = self.task_config.get("ignore_labels", [])
 
     def example2feature(self, example: Example, mode: str) -> Dict[str, Feature]:
         feature = self.tokenizer(example.text, truncation=True, max_length=self.max_len)

@@ -2,7 +2,7 @@ click
 python_snippets
 numpy~=1.23.1
 pydantic
-transformers[onnx]~=4.21.1
+transformers[onnx]~=4.23.1
 datasets~=2.4.0
 tokenizers~=0.12.1
 retrying

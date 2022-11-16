@@ -17,7 +17,7 @@ handlers:
     class: logging.StreamHandler
     level: INFO
     formatter: simple
-    stream: ext://sys.stdout
+    stream: ext://sys.stderr
 
   info_file_handler:
     class: logging.handlers.RotatingFileHandler

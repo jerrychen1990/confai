@@ -29,3 +29,14 @@ class TestUtils(unittest.TestCase):
         l1, l2 = random_split_list(l, 6)
         self.assertEqual(6, len(l2))
         self.assertEqual(4, len(l1))
+
+    def test_inverse_dict(self):
+        d = {
+            "1": 1,
+            "2": 2,
+            "3": 1,
+            "5": 1,
+            "6": 2
+        }
+        rd = inverse_dict(d)
+        self.assertEqual({1: ["1", "3", "5"], 2: ["2", "6"]}, rd)

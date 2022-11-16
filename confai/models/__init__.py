@@ -9,11 +9,11 @@ from snippets import jload
 
 from confai.models.core import ConfAIBaseModel
 from confai.models.nn_core import NNModelConfig
-from confai.models.text_cls import CLSTokenClsModel
+from confai.models.text_cls import CLSTokenClsModel, MLMCLSModel
 from confai.models.text_gen import TransformerGenModel
 from confai.models.text_span_cls import SeqLabelingModel
 
-_all_models = [CLSTokenClsModel] + [TransformerGenModel] + [SeqLabelingModel]
+_all_models = [CLSTokenClsModel, MLMCLSModel] + [TransformerGenModel] + [SeqLabelingModel]
 
 __name2model_cls = {model_cls.__name__: model_cls for model_cls in _all_models}
 

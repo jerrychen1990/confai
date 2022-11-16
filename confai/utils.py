@@ -8,6 +8,7 @@
 import copy
 import random
 import re
+from collections import defaultdict
 from configparser import ConfigParser
 from dataclasses import fields
 from typing import Union
@@ -102,6 +103,13 @@ def jload_multi_files(files):
     for file in files:
         rs.extend(jload_lines(file))
     return rs
+
+
+def inverse_dict(d):
+    rs = defaultdict(list)
+    for k, v in d.items():
+        rs[v].append(k)
+    return dict(rs)
 
 
 # 读取配置文件，支持.json/.ini/.yaml格式
