@@ -9,6 +9,7 @@
 import os
 import re
 import subprocess
+import sys
 
 from setuptools import setup, find_packages
 
@@ -79,8 +80,12 @@ DEPENDENCY_LINKS = [
 
 if __name__ == "__main__":
     name = "confai"
-    version = get_next_version(get_base_version(name), get_last_version(name))
-    version = ".".join([str(e) for e in version])
+    print(sys.argv)
+    if len(sys.argv) >= 4 and sys.argv[-1].startswith("v"):
+        version = sys.argv.pop(-1)
+    else:
+        version = get_next_version(get_base_version(name), get_last_version(name))
+        version = ".".join([str(e) for e in version])
     print(f"version: {version}")
     setup_kwargs = dict(
         name=name,
