@@ -214,6 +214,7 @@ def build_union_instance(union_cls, data):
 
 
 UnionPredict = Union[TextSpan, Label]
+UnionExample = Union[TextSpanClassifyExample, TextGenExample, TextClassifyExample, TextPairClassifyExample]
 
 PathOrPaths = Union[str, List[str]]
 DictOrDicts = Union[dict, List[dict]]

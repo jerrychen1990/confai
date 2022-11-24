@@ -151,7 +151,8 @@ class NNModel(PredictableModel, TrainableModel):
         raise NotImplementedError
 
     @adapt_single(ele_name="examples")
-    def do_predict(self, examples: ExampleOrExamples, mode="model", batch_size=32, **kwargs) -> PredictOrPredicts:
+    def do_predict(self, examples: ExampleOrExamples, mode="model", batch_size=32,
+                   progress=True, **kwargs) -> PredictOrPredicts:
         # logger.info(examples)
         if mode not in self.predict_fn_dict:
             raise ValueError(f"invalid predict mode:{mode}!")
@@ -161,7 +162,10 @@ class NNModel(PredictableModel, TrainableModel):
         # dataset = self.load_dataset(data_or_path=examples)
         preds = []
         with LogCostContext(name="predict batches"):
-            for features in tqdm(dataset):
+            if progress:
+                dataset = tqdm(dataset)
+
+            for features in dataset:
                 # logger.info(f"{features=}")
                 to_pred_features = [{k: f[k] for k in self.input_keys} for f in features]
                 to_pred_features = self.data_manager.collate(features=to_pred_features, tokenizer=self.tokenizer,

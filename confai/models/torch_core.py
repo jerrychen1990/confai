@@ -101,9 +101,11 @@ class HFDataManager(AbstractDataManager):
     def load_dataset(cls, data_or_path: PathOrDictOrExample, task: Task, map_fn: Callable, use_cache=False):
         # read from file or files
         if isinstance(data_or_path, str) or (isinstance(data_or_path, List) and isinstance(data_or_path[0], str)):
+            logger.info("reading examples from file...")
             dataset = Dataset.from_json(data_or_path)
         else:
             # read from example or examples
+            logger.info("reading examples from memory...")
             if isinstance(data_or_path, Example) or \
                     (isinstance(data_or_path, List) and isinstance(data_or_path[0], Example)):
                 data_or_path = data_or_path if isinstance(data_or_path, List) else [data_or_path]
@@ -121,7 +123,7 @@ class HFDataManager(AbstractDataManager):
             example = task.input_cls(**item)
             features = map_fn(example)
             return features
-
+        logger.info("transfer examples to features...")
         return dataset.map(transfer2features, load_from_cache_file=use_cache)
 
 
@@ -197,12 +199,13 @@ class HFTorchModel(NNModel, ABC):
             train_dataset = self.load_dataset(train_data, mode="train")
             # logger.info(train_dataset)
             datasets["train_dataset"] = train_dataset
+            train_kwargs.update(train_num=len(train_dataset))
             if eval_data:
                 eval_dataset = self.load_dataset(eval_data, mode="train")
                 datasets["eval_dataset"] = eval_dataset
+                train_kwargs.update(eval_num=len(eval_dataset))
             logger.info(f"datasets:{datasets}")
             # logger.info(train_dataset[0])
-            train_kwargs.update(train_num=len(train_dataset), eval_num=len(eval_dataset))
 
         with LogCostContext(name="model train"):
             logger.info("building train args")

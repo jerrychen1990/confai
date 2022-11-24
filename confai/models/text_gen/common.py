@@ -20,3 +20,4 @@ class BaseTextGenModel(ConfAIBaseModel, ABC):
     def _load_config(self, config: ModelConfig):
         super()._load_config(config)
         self.max_len = self.task_config["max_len"]
+
