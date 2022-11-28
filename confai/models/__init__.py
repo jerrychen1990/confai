@@ -12,8 +12,9 @@ from confai.models.nn_core import NNModelConfig
 from confai.models.text_cls import CLSTokenClsModel, MLMCLSModel
 from confai.models.text_gen import TransformerGenModel
 from confai.models.text_span_cls import SeqLabelingModel
+from confai.models.mlm import TransformerMLMModel
 
-_all_models = [CLSTokenClsModel, MLMCLSModel] + [TransformerGenModel] + [SeqLabelingModel]
+_all_models = [CLSTokenClsModel, MLMCLSModel] + [TransformerGenModel] + [SeqLabelingModel] + [TransformerMLMModel]
 
 __name2model_cls = {model_cls.__name__: model_cls for model_cls in _all_models}
 

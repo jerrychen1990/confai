@@ -125,7 +125,7 @@ class HFDataManager(AbstractDataManager):
             return features
 
         logger.info("transfer examples to features...")
-        return dataset.map(transfer2features, load_from_cache_file=use_cache)
+        return dataset.map(transfer2features, load_from_cache_file=use_cache, keep_in_memory=True)
 
 
 class HFTorchModel(NNModel, ABC):
@@ -161,9 +161,10 @@ class HFTorchModel(NNModel, ABC):
         raise NotImplementedError
 
     def build_model(self, **kwargs):
-        logger.info(f"building torch model, cuda_available:{torch.cuda.is_available()}, "
-                    f"device:{torch.cuda.device_count()}, "
-                    f"current_device:{torch.cuda.current_device()}")
+        logger.info(f"building torch model, cuda_available:{torch.cuda.is_available()}")
+        if torch.cuda.is_available():
+            logger.info(f"device:{torch.cuda.device_count()}")
+            logger.info(f"current_device:{torch.cuda.current_device()}")
         nn_model = self._do_build_model(**kwargs)
         if torch.cuda.is_available():
             nn_model = nn_model.cuda()
@@ -220,7 +221,7 @@ class HFTorchModel(NNModel, ABC):
                 train_kwargs.update(eval_num=len(eval_dataset))
             logger.info(f"datasets:{datasets}")
             # logger.info(train_dataset[0])
-
+        #
         with LogCostContext(name="model train"):
             logger.info("building train args")
             train_args = get_train_args(**train_kwargs)

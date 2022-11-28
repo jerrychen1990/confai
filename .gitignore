@@ -227,3 +227,4 @@ dmypy.json
 cython_debug/
 
 tmp.py
+inside_model.py

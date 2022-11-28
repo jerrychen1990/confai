@@ -12,7 +12,7 @@ from collections import OrderedDict, defaultdict
 from typing import List, Dict, Set, Sequence, Any
 
 # 计算f1
-from confai.schema import LabelOrLabels, Label, TextSpans, TextSpan, Task, GenText, Example
+from confai.schema import LabelOrLabels, Label, TextSpans, TextSpan, Task, GenText, Example, Token, Tokens
 
 
 def get_f1(precision, recall):
@@ -58,6 +58,10 @@ def label2set(label: LabelOrLabels) -> Set[str]:
 
 def get_unique_text_span(text_span: TextSpan):
     return text_span.text, text_span.label.name, text_span.span
+
+
+def get_unique_token(token: Token):
+    return token.word
 
 
 def group_by(seq: Sequence, key=lambda x: x, map_func=lambda x: x) -> Dict[Any, List]:
@@ -150,11 +154,25 @@ def eval_text_gen(true_texts: List[GenText], pred_texts: List[GenText]) -> dict:
     return eval_rs
 
 
+def eval_mlm(true_tokens: List[Tokens], pred_tokens: List[Tokens]) -> dict:
+    assert len(true_tokens) == len(pred_tokens)
+    flat_true_tokens = [(idx, i, get_unique_token(t))
+                        for idx, tokens in enumerate(true_tokens) for i, t in enumerate(tokens)]
+
+    flat_pred_tokens = [(idx, i, get_unique_token(t))
+                        for idx, tokens in enumerate(pred_tokens) for i, t in enumerate(tokens)]
+
+    eval_rs = eval_sets(set(flat_true_tokens), set(flat_pred_tokens))
+
+    return eval_rs
+
+
 def get_eval_func(task: Task):
     _task2eval_func = {
         Task.TEXT_CLS: eval_text_classify,
         Task.TEXT_SPAN_CLS: eval_text_span_classify,
-        Task.TEXT_GEN: eval_text_gen
+        Task.TEXT_GEN: eval_text_gen,
+        Task.MLM: eval_mlm
     }
     if task not in _task2eval_func:
         raise ValueError(f"no eval function found for task:{task}, valid tasks:"

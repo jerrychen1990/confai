@@ -84,6 +84,14 @@ class GenText(Predict):
 GenTexts = List[GenText]
 
 
+class Token(Predict):
+    word: str = Field(description="单词")
+    score: float = Field(description="单词的概率", le=1., ge=0, default=1.)
+
+
+Tokens = List[Token]
+
+
 # 文本分类模型输入
 class TextClassifyExample(TextExample):
     label: Optional[LabelOrLabels] = Field(description="Ground Truth, 训练数据有此字段。根据label是不是list类型区分单标签任务和多标签任务")
@@ -122,6 +130,13 @@ class TextGenExample(TextExample):
 
     def get_ground_truth(self):
         return self.gen
+
+
+class MLMExample(TextExample):
+    masked_tokens: Optional[Tokens] = Field(description="Ground Truth, 训练数据有此字段。")
+
+    def get_ground_truth(self):
+        return self.masked_tokens
 
 
 """
@@ -200,6 +215,15 @@ MOCK_TEXT_GEN_PREDICT = {
     "text": "黄河入海流",
 }
 
+MOCK_MLM_EXAMPLE = {
+    "text": "白日[MASK]山尽"
+}
+
+MOCK_MLM_PREDICT = [{
+    "word": "依",
+    "score": 1.
+}]
+
 
 def build_union_instance(union_cls, data):
     for cls in union_cls.__args__:
@@ -239,6 +263,8 @@ class Task(Enum):
     TEXT_SPAN_CLS = (TextSpanClassifyExample, TextSpans, MOCK_TEXT_SPAN_EXAMPLE, MOCK_TEXT_SPAN_PREDICT)
     # 文本生成
     TEXT_GEN = (TextGenExample, GenText, MOCK_TEXT_GEN_EXAMPLE, MOCK_TEXT_GEN_PREDICT)
+    # MLM
+    MLM = (MLMExample, Tokens, MOCK_MLM_EXAMPLE, MOCK_MLM_PREDICT)
 
     def __init__(self, input_cls, output_cls, mock_input, mock_output):
         self.input_cls = input_cls

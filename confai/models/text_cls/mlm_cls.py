@@ -98,14 +98,6 @@ class MLMCLSModel(BaseTextClassifyModel, HFTorchModel):
                 tokenize_kwargs.update(text_target=prompt_tgt, text_pair_target=text)
 
         feature = self.tokenizer(**tokenize_kwargs)
-        # tokens = self.tokenizer.convert_ids_to_tokens(feature["input_ids"])
-        # logger.debug(tokens)
-        # tokens = self.tokenizer.convert_ids_to_tokens(feature["labels"])
-        # logger.debug(tokens)
-
-        # mask_idxs = [idx for idx, t in enumerate(tokens) if t == self.tokenizer.mask_token]
-        # feature.update(prompt_text=text, tokens=tokens, mask_idxs=mask_idxs)
-
         return feature
 
     def _update_batch(self, batch: Dict[str, torch.Tensor], features: List[Dict[str, Feature]]):

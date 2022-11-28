@@ -8,7 +8,7 @@
 import logging
 from typing import Dict
 
-from confai.evaluate import label2set, get_tp_fp_fn_set, get_unique_text_span
+from confai.evaluate import label2set, get_tp_fp_fn_set, get_unique_text_span, get_unique_token
 from confai.schema import *
 
 logger = logging.getLogger(__name__)
@@ -76,11 +76,26 @@ def get_text_gen_output(examples: List[TextGenExample], preds: List[GenText]):
     return output
 
 
+def get_mlm_output(examples: List[MLMExample], preds: List[Tokens]):
+    output = []
+    for example, pred in zip(examples, preds):
+        rs_item = example.dict(exclude_none=True, exclude={"extra"})
+        rs_item.update(predict=[p.dict(exclude_none=True) for p in pred])
+        if example.get_ground_truth() is not None:
+            true_set = set([(idx, get_unique_token(token)) for idx, token in enumerate(example.get_ground_truth())])
+            pred_set = set([(idx, get_unique_token(token)) for idx, token in enumerate(pred)])
+            tp_set, fp_set, fn_set = get_tp_fp_fn_set(true_set, pred_set)
+            rs_item.update(tp_set=tp_set, fp_set=fp_set, fn_set=fn_set)
+        output.append(rs_item)
+    return output
+
+
 def get_output_func(task: Task):
     _task2output_func = {
         Task.TEXT_CLS: get_text_classify_output,
         Task.TEXT_SPAN_CLS: get_text_span_classify_output,
-        Task.TEXT_GEN: get_text_gen_output
+        Task.TEXT_GEN: get_text_gen_output,
+        Task.MLM: get_mlm_output
     }
 
     if task not in _task2output_func:
