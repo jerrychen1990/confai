@@ -14,16 +14,16 @@ from typing import Dict, Callable
 
 import numpy as np
 import torch
+from datasets import Dataset
 from snippets import ensure_dir_path, log_cost_time, LogCostContext
-from transformers import BertConfig, EarlyStoppingCallback, \
-    TrainingArguments, Trainer, AutoTokenizer, PreTrainedTokenizerBase
+from torch import nn
+from transformers import BertConfig, TrainingArguments, Trainer, AutoTokenizer, PreTrainedTokenizerBase
 from transformers.models.bert import BertOnnxConfig
 from transformers.utils import PaddingStrategy
-from datasets import Dataset, DatasetDict
 
-from confai.models.callbacks import EvalSaveCallback, get_callbacks
+from confai.models.callbacks import get_callbacks
 from confai.models.nn_core import NNModel, Feature, AbstractDataManager
-from confai.models.schema import *
+from confai.schema import *
 from confai.utils import safe_call, safe_build_data_cls, dlist2ldict
 
 logger = logging.getLogger(__name__)
@@ -123,6 +123,7 @@ class HFDataManager(AbstractDataManager):
             example = task.input_cls(**item)
             features = map_fn(example)
             return features
+
         logger.info("transfer examples to features...")
         return dataset.map(transfer2features, load_from_cache_file=use_cache)
 
@@ -154,6 +155,19 @@ class HFTorchModel(NNModel, ABC):
         logger.info(f"loading nn_model from {torch_path}")
         nn_model = torch.load(torch_path)
         logger.info("load torch model done")
+        return nn_model
+
+    def _do_build_model(self, **kwargs) -> nn.Module:
+        raise NotImplementedError
+
+    def build_model(self, **kwargs):
+        logger.info(f"building torch model, cuda_available:{torch.cuda.is_available()}, "
+                    f"device:{torch.cuda.device_count()}, "
+                    f"current_device:{torch.cuda.current_device()}")
+        nn_model = self._do_build_model(**kwargs)
+        if torch.cuda.is_available():
+            nn_model = nn_model.cuda()
+        logger.info(f"nn_model's device:{nn_model.device}")
         return nn_model
 
     def load_dataset(self, data_or_path, mode="train"):

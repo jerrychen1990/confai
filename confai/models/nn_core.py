@@ -16,7 +16,7 @@ from tqdm import tqdm
 from transformers import PreTrainedTokenizerBase
 
 from confai.models.core import PredictableModel, TrainableModel, ModelConfig
-from confai.models.schema import *
+from confai.schema import *
 from confai.utils import ldict2dlist
 
 logger = logging.getLogger(__name__)

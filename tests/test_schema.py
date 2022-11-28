@@ -11,7 +11,7 @@ import logging
 
 from snippets import jdumps
 
-from confai.models.schema import *
+from confai.schema import *
 
 logger = logging.getLogger(__name__)
 

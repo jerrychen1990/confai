@@ -14,7 +14,7 @@ import numpy as np
 from tqdm import tqdm
 from snippets import jload_lines, jdumps
 
-from confai.models.schema import *
+from confai.schema import *
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ def analyse_file(file_path):
 
 
 @click.command()
-@click.option("--path", "-p", help="文件路径")
+@click.argument("path")
 def analyse_data(path: str):
     """analyse data file"""
     rs = dict()
@@ -65,7 +65,7 @@ def analyse_data(path: str):
                 rs[file] = eval_rs
     else:
         rs = analyse_file(path)
-    print(jdumps(rs))
+    click.echo(jdumps(rs))
 
 
 if __name__ == '__main__':

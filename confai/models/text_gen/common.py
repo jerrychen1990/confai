@@ -9,7 +9,7 @@ import logging
 from abc import ABC
 
 from confai.models.core import ConfAIBaseModel, ModelConfig
-from confai.models.schema import Task
+from confai.schema import Task
 
 logger = logging.getLogger(__name__)
 

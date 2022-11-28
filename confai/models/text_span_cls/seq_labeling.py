@@ -18,11 +18,10 @@ import torch
 from snippets import seq2dict
 from transformers import AutoModelForTokenClassification
 
-from confai.models.nn_core import Feature, NNModel
+from confai.models.nn_core import Feature
 from confai.models.torch_core import HFTorchModel
 from confai.models.text_span_cls.common import BaseTextSpanClassifyModel, get_char2token
-from confai.models.schema import TextSpanClassifyExample, TextSpans, TextSpan, Label, PathOrDictOrExample, \
-    PredictOrPredicts, Example
+from confai.schema import TextSpanClassifyExample, TextSpans, TextSpan, Label
 
 logger = logging.getLogger(__name__)
 
@@ -273,7 +272,7 @@ class SeqLabelingModel(BaseTextSpanClassifyModel, HFTorchModel):
                                                  span_extract_strategy=self.seq_label_strategy)
         return text_spans
 
-    def build_model(self, pretrained_model_name: str, **kwargs):
+    def _do_build_model(self, pretrained_model_name: str, **kwargs):
         pretrain_path = self.data_manager.get_local_path(pretrained_model_name)
         logger.info(f"initializing nn model with path:{pretrain_path}...")
         self.nn_model = AutoModelForTokenClassification.from_pretrained(pretrain_path, id2label=self.id2label)

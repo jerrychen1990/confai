@@ -12,7 +12,7 @@ from collections import OrderedDict, defaultdict
 from typing import List, Dict, Set, Sequence, Any
 
 # 计算f1
-from confai.models.schema import LabelOrLabels, Label, TextSpans, TextSpan, Task, GenText, Example
+from confai.schema import LabelOrLabels, Label, TextSpans, TextSpan, Task, GenText, Example
 
 
 def get_f1(precision, recall):

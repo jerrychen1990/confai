@@ -10,10 +10,10 @@ import os
 from abc import ABC
 from typing import Set
 
-from snippets import dump_lines, load_lines, seq2dict, ensure_dir_path
+from snippets import dump_lines, load_lines, ensure_dir_path
 
 from confai.models.core import ConfAIBaseModel
-from confai.models.schema import Task
+from confai.schema import Task
 
 logger = logging.getLogger(__name__)
 

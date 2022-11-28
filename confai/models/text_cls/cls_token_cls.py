@@ -11,11 +11,11 @@ from typing import Dict
 import numpy as np
 import torch
 from numpy import ndarray
-from snippets import load_lines, seq2dict
+from snippets import seq2dict
 from transformers import AutoModelForSequenceClassification
 
 from confai.models.torch_core import HFTorchModel, Feature
-from confai.models.schema import *
+from confai.schema import *
 from confai.models.text_cls.common import BaseTextClassifyModel
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class CLSTokenClsModel(BaseTextClassifyModel, HFTorchModel):
             label = Label(name=self.id2label[label_id], score=score)
             return label
 
-    def build_model(self, pretrained_model_name, **kwargs):
+    def _do_build_model(self, pretrained_model_name, **kwargs):
         local_pretrain_model_path = self.data_manager.get_local_path(pretrained_model_name)
         logger.info(f"initializing nn model with path:{local_pretrain_model_path}...")
 

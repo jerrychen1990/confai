@@ -5,21 +5,16 @@
 @file: test_inside_model.py
 @time: 2022/11/16 10:27
 """
-import sys
 import os
-
-from transformers.tokenization_utils_base import TruncationStrategy
 
 os.environ["CONFAI_DEBUG"] = "True"
 CONFAI_PATH = "."
 os.environ["EXPERIMENT_HOME"] = "/Users/chenhao/experiment"
 
 
-from confai.models import get_model_cls, load_model
-from confai.models.schema import *
+from confai.models import load_model
 from confai.experiments import get_model_config, ExperimentConfig
 from confai.utils import *
-import dataclasses
 
 config_path = f"{CONFAI_PATH}/conf/examples/sentiment_cls_token_cls.ini"
 # config_path = f"{CONFAI_PATH}/conf/examples/poem_transform_gen.ini"

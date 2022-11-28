@@ -21,7 +21,7 @@ from snippets import jload_lines, jdump_lines
 from confai.evaluate import *
 from confai.models import get_model_cls
 from confai.models.nn_core import NNModel, NNModelConfig
-from confai.models.schema import *
+from confai.schema import *
 from confai.output import get_output_on_task
 from confai.utils import print_info, jdumps, get_current_time_str, jdump, random_split_list, read_config
 

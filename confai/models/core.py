@@ -13,7 +13,7 @@ from typing import Iterable
 
 from snippets import jdumps, jdump, jload, ensure_dir_path, jload_lines
 
-from confai.models.schema import *
+from confai.schema import *
 from confai.utils import batch_apply
 
 logger = logging.getLogger(__name__)

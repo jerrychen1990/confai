@@ -12,7 +12,7 @@ from typing import Dict
 import torch
 from transformers import T5ForConditionalGeneration
 
-from confai.models.schema import *
+from confai.schema import *
 from confai.models.text_gen.common import BaseTextGenModel
 from confai.models.torch_core import HFTorchModel, Feature
 
@@ -49,7 +49,7 @@ class TransformerGenModel(BaseTextGenModel, HFTorchModel):
 
         return GenText(text=pred_text)
 
-    def build_model(self, pretrained_model_name: str, **kwargs):
+    def _do_build_model(self, pretrained_model_name: str, **kwargs):
         local_pretrain_model_path = self.data_manager.get_local_path(pretrained_model_name)
         logger.info(f"initializing nn model with path:{local_pretrain_model_path}...")
         self.nn_model = T5ForConditionalGeneration.from_pretrained(local_pretrain_model_path)

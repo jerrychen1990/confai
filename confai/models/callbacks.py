@@ -15,7 +15,7 @@ from transformers import TrainerCallback, TrainingArguments, TrainerState, Train
 
 from confai.evaluate import eval_on_task
 from confai.models.nn_core import NNModel
-from confai.models.schema import Example
+from confai.schema import Example
 
 logger = logging.getLogger(__name__)
 

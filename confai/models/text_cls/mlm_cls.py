@@ -5,7 +5,6 @@
 @file: mlm_cls.py
 @time: 2022/11/15 18:02
 """
-import copy
 import logging
 import random
 import re
@@ -19,7 +18,7 @@ from transformers import AutoModelForMaskedLM, PreTrainedTokenizerBase
 from transformers.tokenization_utils_base import TruncationStrategy
 
 import confai.models.functions as F
-from confai.models.schema import *
+from confai.schema import *
 from confai.models.text_cls.common import BaseTextClassifyModel
 from confai.models.torch_core import HFTorchModel, Feature
 from confai.utils import inverse_dict
@@ -68,22 +67,45 @@ class MLMCLSModel(BaseTextClassifyModel, HFTorchModel):
         self.id2token = dict(zip(self.valid_token_ids, self.valid_tokens))
 
     def example2feature(self, example: TextClassifyExample, mode: str) -> Dict[str, Feature]:
-        prompt = random.choice(self.prompts).replace("[X]", "")
+        prompt = random.choice(self.prompts)
+        if prompt.endswith("[X]"):
+            prompt_type = "first"
+        elif prompt.endswith("[X]"):
+            prompt_type = "last"
+        else:
+            raise ValueError(f"invalid prompt:{prompt}")
+
+        prompt = prompt.replace("[X]", "")
+        # logger.debug(f"prompt:{prompt}, prompt_type:{prompt_type}")
+
         text = example.text
-        tokenize_kwargs = dict(text=text, text_pair=prompt, truncation=TruncationStrategy.ONLY_FIRST,
-                               max_length=self.max_len)
+        if prompt_type == "last":
+            tokenize_kwargs = dict(text=text, text_pair=prompt, truncation=TruncationStrategy.ONLY_FIRST,
+                                   max_length=self.max_len)
+        else:
+            tokenize_kwargs = dict(text=prompt, text_pair=text, truncation=TruncationStrategy.ONLY_SECOND,
+                                   max_length=self.max_len)
 
         if mode == "train":
             label_name = example.label.name
             word = random.choice(self.label2words[label_name])
-            text_target = text
-            text_pair_target = re.sub(pattern='(\[MASK\])+', repl=word, string=prompt)
-            tokenize_kwargs.update(text_target=text_target, text_pair_target=text_pair_target)
+            prompt_tgt = re.sub(pattern='(\[MASK\])+', repl=word, string=prompt)
+
+            logger.debug(f"word:{word}, prompt_tgt:{prompt_tgt}")
+            if prompt_type == "last":
+                tokenize_kwargs.update(text_target=text, text_pair_target=prompt_tgt)
+            else:
+                tokenize_kwargs.update(text_target=prompt_tgt, text_pair_target=text)
+
         feature = self.tokenizer(**tokenize_kwargs)
         # tokens = self.tokenizer.convert_ids_to_tokens(feature["input_ids"])
         # logger.debug(tokens)
+        # tokens = self.tokenizer.convert_ids_to_tokens(feature["labels"])
+        # logger.debug(tokens)
+
         # mask_idxs = [idx for idx, t in enumerate(tokens) if t == self.tokenizer.mask_token]
         # feature.update(prompt_text=text, tokens=tokens, mask_idxs=mask_idxs)
+
         return feature
 
     def _update_batch(self, batch: Dict[str, torch.Tensor], features: List[Dict[str, Feature]]):
@@ -117,7 +139,7 @@ class MLMCLSModel(BaseTextClassifyModel, HFTorchModel):
         max_label_idx = np.argmax(probs)
         return Label(name=label2logit[max_label_idx][0], score=probs[max_label_idx])
 
-    def build_model(self, pretrained_model_name, **kwargs):
+    def _do_build_model(self, pretrained_model_name, **kwargs):
         local_pretrain_model_path = self.data_manager.get_local_path(pretrained_model_name)
         logger.info(f"initializing nn model with path:{local_pretrain_model_path}...")
         self.nn_model = AutoModelForMaskedLM.from_pretrained(local_pretrain_model_path)

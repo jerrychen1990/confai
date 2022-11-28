@@ -9,7 +9,7 @@ import logging
 from typing import Dict
 
 from confai.evaluate import label2set, get_tp_fp_fn_set, get_unique_text_span
-from confai.models.schema import *
+from confai.schema import *
 
 logger = logging.getLogger(__name__)
 

@@ -13,7 +13,7 @@ from snippets import dump_lines, load_lines, ensure_dir_path
 
 from confai.models.core import ConfAIBaseModel, ModelConfig
 from confai.models.text_cls.common import multi_label2id_vector
-from confai.models.schema import Task
+from confai.schema import Task
 
 logger = logging.getLogger(__name__)
 
