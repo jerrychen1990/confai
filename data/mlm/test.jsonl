@@ -1,2 +1,2 @@
-{"text": "有志者，事[MASK][MASK]，百二秦川终属楚", "masked_tokens":[{"word": "竟"}, {"word": "成"}]}
-{"text": "[MASK]心人，天不负[MASK]三千越甲可吞[MASK]",  "masked_tokens":[{"word": "苦"}, {"word": "，"}, {"word": "吴"}]}
+{"text": "有志者，事[MASK][MASK]，百二秦川终属楚", "mask_tokens":[{"word": "竟"}, {"word": "成"}]}
+{"text": "[MASK]心人，天不负[MASK]三千越甲可吞[MASK]",  "mask_tokens":[{"word": "苦"}, {"word": "，"}, {"word": "吴"}]}

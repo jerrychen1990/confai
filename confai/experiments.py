@@ -160,7 +160,7 @@ class Experiment(metaclass=ABCMeta):
         self.train_data_path, self.eval_data_path, self.test_data_path = None, None, None
 
         # update paths
-        exp_name = f"{self.common_config.model_name}-{self.common_config.owner}"
+        exp_name = f"{self.model_cls.__name__}-{self.common_config.model_name}-{self.common_config.owner}"
         if not self.common_config.is_overwrite_experiment:
             exp_name = f"{exp_name}-{get_current_time_str(fmt='%Y-%m-%d-%H-%M-%S')}"
         self.experiment_path = os.path.join(self.common_config.experiment_dir, self.common_config.project_name,

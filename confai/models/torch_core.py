@@ -7,6 +7,7 @@
 """
 
 import logging
+import math
 import os
 import os.path
 from abc import abstractmethod
@@ -14,8 +15,8 @@ from typing import Dict, Callable
 
 import numpy as np
 import torch
-from datasets import Dataset
-from snippets import ensure_dir_path, log_cost_time, LogCostContext
+from datasets import Dataset, load_dataset, IterableDataset
+from snippets import ensure_dir_path, log_cost_time, LogCostContext, jdumps
 from torch import nn
 from transformers import BertConfig, TrainingArguments, Trainer, AutoTokenizer, PreTrainedTokenizerBase
 from transformers.models.bert import BertOnnxConfig
@@ -48,14 +49,20 @@ def get_train_args(**kwargs):
     for s, t in _train_arg_map.items():
         if s in kwargs and t not in kwargs:
             kwargs[t] = kwargs[s]
+    if "max_steps" in kwargs:
+        max_steps = kwargs["max_steps"]
+    else:
+        actual_batch_size = min(kwargs["per_device_train_batch_size"], kwargs["train_num"])
+
+        max_steps = int(math.ceil(kwargs["num_train_epochs"] * kwargs["train_num"] / actual_batch_size))
+
+        kwargs["max_steps"] = max_steps
+
     logging_pct = kwargs.get("logging_pct")
-    if logging_pct:
-        if "max_steps" in kwargs:
-            max_steps = kwargs["max_steps"]
-        else:
-            max_steps = kwargs["num_train_epochs"] * kwargs["train_num"] // kwargs["per_device_train_batch_size"]
+    if kwargs.get("logging_pct"):
         logging_steps = int(max_steps * logging_pct)
         kwargs["logging_steps"] = logging_steps
+
     logger.info(f"train kwargs:{kwargs}")
 
     training_args = safe_build_data_cls(
@@ -102,7 +109,9 @@ class HFDataManager(AbstractDataManager):
         # read from file or files
         if isinstance(data_or_path, str) or (isinstance(data_or_path, List) and isinstance(data_or_path[0], str)):
             logger.info("reading examples from file...")
-            dataset = Dataset.from_json(data_or_path)
+            # dataset = Dataset.from_json(data_or_path)
+            dataset = load_dataset(path="json", streaming=True, data_files=data_or_path, split="train")
+
         else:
             # read from example or examples
             logger.info("reading examples from memory...")
@@ -125,7 +134,14 @@ class HFDataManager(AbstractDataManager):
             return features
 
         logger.info("transfer examples to features...")
-        return dataset.map(transfer2features, load_from_cache_file=use_cache, keep_in_memory=True)
+        return dataset.map(transfer2features)
+
+    @classmethod
+    def count_dataset(cls, dataset: Union[Dataset, IterableDataset]) -> int:
+        if isinstance(dataset, IterableDataset):
+            return sum(1 for _ in iter(dataset))
+        else:
+            return len(dataset)
 
 
 class HFTorchModel(NNModel, ABC):
@@ -161,10 +177,12 @@ class HFTorchModel(NNModel, ABC):
         raise NotImplementedError
 
     def build_model(self, **kwargs):
-        logger.info(f"building torch model, cuda_available:{torch.cuda.is_available()}")
+        device_message = dict(cuda_available=torch.cuda.is_available(),
+                              visiable_device_list=os.environ.get("CUDA_VISIBLE_DEVICES"))
         if torch.cuda.is_available():
-            logger.info(f"device:{torch.cuda.device_count()}")
-            logger.info(f"current_device:{torch.cuda.current_device()}")
+            device_message.update(device_count=torch.cuda.device_count(), current_device=torch.cuda.current_device())
+        logger.info(f"device info:\n{jdumps(device_message)}")
+
         nn_model = self._do_build_model(**kwargs)
         if torch.cuda.is_available():
             nn_model = nn_model.cuda()
@@ -174,8 +192,11 @@ class HFTorchModel(NNModel, ABC):
     def load_dataset(self, data_or_path, mode="train"):
         assert mode in ["infer", "train"]
 
-        return self.data_manager.load_dataset(data_or_path=data_or_path, task=self.task,
-                                              map_fn=lambda e: self.example2feature(example=e, mode=mode))
+        ds = self.data_manager.load_dataset(data_or_path=data_or_path, task=self.task,
+                                            map_fn=lambda e: self.example2feature(example=e, mode=mode))
+        # logger.debug("load dataset done")
+        ds = ds.with_format("torch")
+        return ds
 
     def predict_with_model(self, features: Dict[str, np.ndarray], **kwargs) -> Dict[str, Feature]:
         self.nn_model.eval()
@@ -206,19 +227,22 @@ class HFTorchModel(NNModel, ABC):
 
     @log_cost_time(name="train phase")
     def train(self, train_data: PathOrDictOrExample,
-              eval_data: PathOrDictOrExample = None,
-              train_kwargs=dict(),
-              callback_kwargs=dict()):
+              train_kwargs: Dict,
+              callback_kwargs: Dict,
+              eval_data: PathOrDictOrExample = None):
         datasets = dict()
         with LogCostContext(name="load train/eval data"):
             train_dataset = self.load_dataset(train_data, mode="train")
             # logger.info(train_dataset)
             datasets["train_dataset"] = train_dataset
-            train_kwargs.update(train_num=len(train_dataset))
+            train_num = self.data_manager.count_dataset(train_dataset)
+            logger.debug(f"train_num:{train_num}")
+            train_kwargs.update(train_num=train_num)
             if eval_data:
                 eval_dataset = self.load_dataset(eval_data, mode="train")
                 datasets["eval_dataset"] = eval_dataset
-                train_kwargs.update(eval_num=len(eval_dataset))
+                eval_num = self.data_manager.count_dataset(eval_dataset)
+                train_kwargs.update(eval_num=eval_num)
             logger.info(f"datasets:{datasets}")
             # logger.info(train_dataset[0])
         #
@@ -230,6 +254,7 @@ class HFTorchModel(NNModel, ABC):
             logger.debug(f"train args:{train_args}")
             logger.debug(f"{callbacks=}")
             logger.info("do training")
+
             trainer = Trainer(
                 model=self.nn_model,
                 args=train_args,

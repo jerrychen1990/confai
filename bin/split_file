@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 @click.command()
-@click.option("--src_path", "-s", help="原始文件路径")
-@click.option("--dst_path", "-d", help="目标文件路径")
+@click.argument("--src_path")
+@click.argument("--dst_path")
 @click.option("--split_pct", "-p", type=float, help="拆分比例")
 @click.option("--split_num", "-n", type=int, help="拆分数量")
 @click.option("--remain_path", "-r", help="保留文件路径")

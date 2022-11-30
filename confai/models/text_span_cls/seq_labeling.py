@@ -231,6 +231,7 @@ class SeqLabelingModel(BaseTextSpanClassifyModel, HFTorchModel):
 
     def example2feature(self, example: TextSpanClassifyExample, mode: str) -> Dict[str, Feature]:
         features = self.tokenizer(example.text, truncation=True, return_offsets_mapping=True, max_length=self.max_len)
+        self.tokenizer.convert_tokens_to_string()
         features.update(text=example.text)
         if mode == "train":
             char2token = get_char2token(example.text, features["offset_mapping"])

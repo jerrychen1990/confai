@@ -5,6 +5,7 @@
 @file: mlm_cls.py
 @time: 2022/11/15 18:02
 """
+import copy
 import logging
 import random
 import re
@@ -70,7 +71,7 @@ class MLMCLSModel(BaseTextClassifyModel, HFTorchModel):
         prompt = random.choice(self.prompts)
         if prompt.endswith("[X]"):
             prompt_type = "first"
-        elif prompt.endswith("[X]"):
+        elif prompt.startswith("[X]"):
             prompt_type = "last"
         else:
             raise ValueError(f"invalid prompt:{prompt}")
@@ -85,24 +86,22 @@ class MLMCLSModel(BaseTextClassifyModel, HFTorchModel):
         else:
             tokenize_kwargs = dict(text=prompt, text_pair=text, truncation=TruncationStrategy.ONLY_SECOND,
                                    max_length=self.max_len)
-
+        feature = self.tokenizer(**tokenize_kwargs)
         if mode == "train":
+            mask_idxs = [idx for idx, e in enumerate(feature["input_ids"]) if e == self.tokenizer.mask_token_id]
             label_name = example.label.name
             word = random.choice(self.label2words[label_name])
-            prompt_tgt = re.sub(pattern='(\[MASK\])+', repl=word, string=prompt)
-
-            logger.debug(f"word:{word}, prompt_tgt:{prompt_tgt}")
-            if prompt_type == "last":
-                tokenize_kwargs.update(text_target=text, text_pair_target=prompt_tgt)
-            else:
-                tokenize_kwargs.update(text_target=prompt_tgt, text_pair_target=text)
-
-        feature = self.tokenizer(**tokenize_kwargs)
+            labels = [-100] * len(feature["input_ids"])
+            word_token_ids = self.tokenizer.encode(word, add_special_tokens=False)
+            assert len(word_token_ids) == len(mask_idxs), f"word:{word} and mask_idxs:{mask_idxs} not match!"
+            for idx, token_id in zip(mask_idxs, word_token_ids):
+                labels[idx] = token_id
+            feature.update(labels=labels, mask_idxs=mask_idxs, word_token_ids=word_token_ids)
         return feature
 
     def _update_batch(self, batch: Dict[str, torch.Tensor], features: List[Dict[str, Feature]]):
         max_len = batch["input_ids"].shape[1]
-        labels = [e["labels"] + [0] * (max_len - len(e["labels"])) for e in features]
+        labels = [e["labels"] + [-100] * (max_len - len(e["labels"])) for e in features]
         # logger.info(labels)
         labels = torch.tensor(labels)
         batch["labels"] = labels

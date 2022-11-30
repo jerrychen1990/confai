@@ -59,4 +59,21 @@ test_data = list(model.read_examples(test_data_path))
 print(train_data[0])
 #
 train_dataset = model.load_dataset(train_data_path)
-print(train_dataset[0])
+
+
+model_kwargs = exp_config.nn_model_config
+nn_model = model.build_model(**model_kwargs)
+
+
+import copy
+import torch
+
+train_kwargs = copy.copy(exp_config.train_config)
+train_kwargs.update(output_dir="./output", batch_size=2)
+print(train_kwargs)
+callback_kwargs = copy.copy(exp_config.callback_config)
+if 'eval_save' in callback_kwargs:
+    kwargs = callback_kwargs["eval_save"]
+    kwargs.update(model=model, eval_data=eval_data_path, test_config=exp_config.test_config,experiment_path=".")
+
+model.train(train_data=train_data_path, eval_data=eval_data_path, train_kwargs=train_kwargs, callback_kwargs=callback_kwargs)

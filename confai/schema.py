@@ -133,10 +133,10 @@ class TextGenExample(TextExample):
 
 
 class MLMExample(TextExample):
-    masked_tokens: Optional[Tokens] = Field(description="Ground Truth, 训练数据有此字段。")
+    mask_tokens: Optional[Tokens] = Field(description="Ground Truth, 训练数据有此字段。")
 
     def get_ground_truth(self):
-        return self.masked_tokens
+        return self.mask_tokens
 
 
 """
